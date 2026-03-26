@@ -54,7 +54,7 @@ if 'lang' not in st.session_state: st.session_state['lang'] = 'EN'
 
 col_lang1, col_lang2 = st.columns([8, 2])
 with col_lang2:
-    if st.button("🌐 عربي / English", key="lang_btn"):
+    if st.button("🌐 عربي / English"):
         st.session_state['lang'] = 'AR' if st.session_state['lang'] == 'EN' else 'EN'
         st.rerun()
 
@@ -119,11 +119,10 @@ if student_session_doc:
 
         if current_mode == "Registration (New Students)":
             st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
-            sid = st.text_input(t("Enter Student ID", "أدخل رقمك الجامعي"), key="reg_id")
-            # مفتاح الذاكرة لحماية الكاميرا
-            face = st.camera_input(t("Frame your face", "التقط صورة واضحة لوجهك"), key="reg_cam")
+            sid = st.text_input(t("Enter Student ID", "أدخل رقمك الجامعي"))
+            face = st.camera_input(t("Frame your face", "التقط صورة واضحة لوجهك"))
             
-            if st.button(t("Register Identity", "تسجيل البيانات"), key="reg_btn"):
+            if st.button(t("Register Identity", "تسجيل البيانات")):
                 if not sid or face is None:
                     st.warning(t("⚠️ Please enter ID and capture photo first.", "⚠️ يرجى إدخال الرقم والتقاط الصورة أولاً."))
                 else:
@@ -131,8 +130,9 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # 🛡️ وضع حماية الطالب (صارم)
-                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
+                            # 🛡️ وضع حماية الطالب (صارم ولكن بمرونة): استخدام نموذج mtcnn
+                            # MtCnn نموذج مستقر وموثوق جداً ويتعامل بمرونة مع النظارات والشعر
+                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True, detector_backend='mtcnn')
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
@@ -147,12 +147,11 @@ if student_session_doc:
                 st.error(t("⏳ Time is up! Session closed.", "⏳ انتهى وقت التحضير! أُغلقت الجلسة."))
             else:
                 st.markdown(f"#### 🎓 {t('Mark Attendance', 'تسجيل الحضور')}")
-                sid = st.text_input(t("Your Registered ID", "رقمك الجامعي المسجل"), key="att_id")
+                sid = st.text_input(t("Your Registered ID", "رقمك الجامعي المسجل"))
                 
                 c1, c2 = st.columns(2)
                 with c1: 
-                    # مفتاح الذاكرة لحماية الكاميرا
-                    student_img = st.camera_input(t("Live Selfie Verification", "التحقق من الوجه"), key="att_cam")
+                    student_img = st.camera_input(t("Live Selfie Verification", "التحقق من الوجه"))
                 with c2:
                     st.markdown(f"**📍 {t('Confirm Your Location', 'تأكيد موقعك')}**")
                     c_gps_btn, c_empty = st.columns([1, 4])
@@ -160,7 +159,7 @@ if student_session_doc:
                         loc = streamlit_geolocation()
                     if loc['latitude']: st.success(t("GPS Lock 📍", "تم تحديد الموقع 📍"))
                 
-                if st.button(t("Confirm Attendance", "تأكيد الحضور"), key="att_btn"):
+                if st.button(t("Confirm Attendance", "تأكيد الحضور")):
                     if not sid or student_img is None or not loc['latitude']:
                         st.warning(t("⚠️ Complete all steps (ID, Photo, GPS).", "⚠️ يرجى إكمال كل الخطوات (الرقم، الصورة، الموقع)."))
                     else:
@@ -173,8 +172,9 @@ if student_session_doc:
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # 🛡️ وضع حماية الطالب (صارم)
-                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, enforce_detection=True)
+                                    # 🛡️ وضع حماية الطالب (صارم ولكن بمرونة): استخدام نموذج mtcnn
+                                    #MtCnn سيتعرف على وجهك حتى مع النظارات ولن يعتبرها محاولة غش
+                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, enforce_detection=True, detector_backend='mtcnn')
                                     os.remove(tmp_p)
                                     if not res['verified']:
                                         st.error(t("❌ Face Mismatch Alert!", "❌ الوجه لا يتطابق مع الرقم الجامعي!"))
@@ -212,26 +212,26 @@ else:
             c1, c2 = st.columns(2)
             with c1:
                 st.image("https://cdn-icons-png.flaticon.com/512/3135/3135755.png", width=140)
-                if st.button(t("👨‍🎓 Student Portal", "👨‍🎓 بوابة الطالب"), key="home_stu_btn"):
+                if st.button(t("👨‍🎓 Student Portal", "👨‍🎓 بوابة الطالب")):
                     st.session_state['page'] = 'Student_Info'; st.rerun()
             with c2:
                 st.image("https://cdn-icons-png.flaticon.com/512/3135/3135810.png", width=140)
-                if st.button(t("👨‍🏫 Professor Portal", "👨‍🏫 بوابة الدكتور"), key="home_doc_btn"):
+                if st.button(t("👨‍🏫 Professor Portal", "👨‍🏫 بوابة الدكتور")):
                     st.session_state['page'] = 'Doctor_Auth'; st.rerun()
 
         elif st.session_state['page'] == 'Student_Info':
-            if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية"), key="back_btn_stu"): st.session_state['page'] = 'Home'; st.rerun()
+            if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية")): st.session_state['page'] = 'Home'; st.rerun()
             st.markdown(f"<h2>📱 {t('Accessing Your Class', 'كيف تدخل كلاسك')}</h2>", unsafe_allow_html=True)
             st.info(t("Scan the Magic QR Code displayed by your Professor.", "لتسجيل حضورك، امسح الباركود الذي يعرضه الدكتور ليتم توجيهك."))
 
         elif st.session_state['page'] == 'Doctor_Auth':
-            if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية"), key="back_btn_doc"): st.session_state['page'] = 'Home'; st.rerun()
+            if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية")): st.session_state['page'] = 'Home'; st.rerun()
             st.markdown(f"<h2>👨‍🏫 {t('Professor Portal', 'بوابة الدكتور')}</h2>", unsafe_allow_html=True)
             tab_login, tab_reg = st.tabs([t("🔒 Secure Login", "🔒 تسجيل الدخول"), t("📝 Setup Account", "📝 إنشاء حساب")])
             with tab_login:
                 log_email = st.text_input(t("Email Address", "البريد الإلكتروني"), key="log_e").lower().strip()
                 log_pwd = st.text_input(t("Password", "كلمة المرور"), type="password", key="log_p")
-                if st.button(t("Login", "دخول"), key="login_btn"):
+                if st.button(t("Login", "دخول")):
                     doc_safe_id = log_email.replace(".", "_").replace("@", "_")
                     db_pwd = get_db(f'/doctors/{doc_safe_id}/password')
                     if db_pwd and str(db_pwd) == str(log_pwd):
@@ -241,7 +241,7 @@ else:
                 reg_email = st.text_input(t("Email", "البريد الإلكتروني الجديد"), key="reg_e").lower().strip()
                 reg_pwd = st.text_input(t("Password", "كلمة المرور"), type="password", key="reg_p")
                 reg_name = st.text_input(t("Dr. Name", "اسم الدكتور"), key="reg_n")
-                if st.button(t("Create Account", "إنشاء الحساب"), key="reg_acc_btn"):
+                if st.button(t("Create Account", "إنشاء الحساب")):
                     if reg_email and reg_pwd and reg_name:
                         doc_safe_id = reg_email.replace(".", "_").replace("@", "_")
                         set_db(f'/doctors/{doc_safe_id}', {"password": reg_pwd, "name": reg_name})
@@ -258,7 +258,7 @@ else:
         c_title, c_log = st.columns([8,2])
         with c_title: st.title(f"👨‍🏫 {t('Dr.', 'د.')} {doc_name}'s {t('Command Center', 'لوحة التحكم')}")
         with c_log:
-            if st.button(t("🚪 Logout", "🚪 خروج"), key="logout_btn"):
+            if st.button(t("🚪 Logout", "🚪 خروج")):
                 st.session_state['doc_id'] = None; st.session_state['page'] = 'Home'; st.rerun()
         
         tabs = st.tabs([t("⚙️ Operations", "⚙️ العمليات"), t("📸 Batch Processing", "📸 تصوير القاعة"), t("📋 Live KPIs", "📋 السجلات والغياب")])
@@ -266,10 +266,10 @@ else:
         with tabs[0]:
             saved_classes = get_db(f'/doctors/{doc_id}/classes') or []
             c1, c2 = st.columns([3, 1])
-            with c1: new_c = st.text_input(t("Add Class (e.g., Sana'a Univ - AI)", "أضف كلاس جديد"), key="new_class")
+            with c1: new_c = st.text_input(t("Add Class (e.g., Sana'a Univ - AI)", "أضف كلاس جديد"))
             with c2:
                 st.write(""); st.write("")
-                if st.button(t("Save Course", "حفظ الكلاس"), key="save_class_btn"):
+                if st.button(t("Save Course", "حفظ الكلاس")):
                     if new_c and new_c not in saved_classes:
                         saved_classes.append(new_c)
                         set_db(f'/doctors/{doc_id}/classes', saved_classes)
@@ -277,13 +277,14 @@ else:
             
             st.write("---")
             if saved_classes:
-                selected_class = st.selectbox(t("Select Course:", "اختر الكلاس:"), saved_classes, key="sel_class")
-                mode = st.radio(t("Student Action:", "حالة الطلاب:"), ["Standby (Closed)", "Registration (New Students)", "Attendance (Live)"], key="mode_rad")
-                dur = st.slider(t("⏱️ Timer Window (Minutes)", "⏱️ مدة فتح التحضير (بالدقائق)"), 1, 60, 5, key="dur_slider")
+                st.markdown(f"### 📍 {t('Geofencing Setup', 'إعدادات الموقع (السياج الجغرافي)')}")
+                selected_class = st.selectbox(t("Select Course:", "اختر الكلاس:"), saved_classes)
+                mode = st.radio(t("Student Action:", "حالة الطلاب:"), ["Standby (Closed)", "Registration (New Students)", "Attendance (Live)"])
+                dur = st.slider(t("⏱️ Timer Window (Minutes)", "⏱️ مدة فتح التحضير (بالدقائق)"), 1, 60, 5)
                 
                 c_geo1, c_geo2 = st.columns(2)
                 with c_geo1:
-                    allowed_rad = st.number_input(t("Allowed Distance (Meters)", "المسافة المسموحة (بالأمتار)"), min_value=10, max_value=5000, value=100, key="dist_input")
+                    allowed_rad = st.number_input(t("Allowed Distance (Meters)", "المسافة المسموحة (بالأمتار)"), min_value=10, max_value=5000, value=100)
                 with c_geo2:
                     st.markdown(f"**📍 {t('Capture Classroom Location', 'تحديد موقع القاعة الحالي')}**")
                     c_gps_doc, c_empty_doc = st.columns([1, 4])
@@ -292,7 +293,7 @@ else:
                     if doc_loc['latitude']:
                          st.success(t("Location captured!", "تم تحديد الموقع بنجاح!"))
                 
-                if st.button(t("🚀 GO LIVE", "🚀 تفعيل الجلسة للطلاب"), key="golive_btn"):
+                if st.button(t("🚀 GO LIVE", "🚀 تفعيل الجلسة للطلاب")):
                     lat_val = doc_loc['latitude'] if doc_loc and doc_loc.get('latitude') else 0.0
                     lon_val = doc_loc['longitude'] if doc_loc and doc_loc.get('longitude') else 0.0
                     
@@ -311,6 +312,7 @@ else:
                         st.success(f"✅ {t('Session Active until', 'الجلسة مفعلة حتى')} {expires_at}")
                 
                 st.write("---")
+                st.markdown(f"### 📱 {t('Magic QR Code', 'باركود التوجيه الذكي')}")
                 smart_url = f"https://mow3lid-skynote-attendance.hf.space/?embed=true&session={doc_id}"
                 qr = qrcode.make(smart_url)
                 buf = BytesIO(); qr.save(buf, format="PNG")
@@ -325,51 +327,74 @@ else:
                 c_cam, c_up = st.columns(2)
                 
                 with c_cam:
-                    st.markdown(f"**📷 {t('Live Camera', 'كاميرا التحضير المباشر')}**")
-                    # مفتاح الذاكرة لحماية كاميرا الدكتور من المسح
-                    doc_cam = st.camera_input(t("Take photo", "التقط الصورة"), key="doc_batch_cam")
+                    st.markdown(f"**📷 {t('Live Camera (Auto-Process)', 'كاميرا التحضير (تحليل فوري وتلقائي)')}**")
+                    doc_cam = st.camera_input(t("Take photo", "التقط الصورة"))
                     
-                with c_up:
-                    st.markdown(f"**📂 {t('Upload Photos', 'رفع صور من الجهاز')}**")
-                    imgs = st.file_uploader(t("Upload and Process", "ارفع الصور"), accept_multiple_files=True, key="doc_uploads")
-                    
-                # زر معالجة موحد يعالج الصور المرفوعة والكاميرا في نفس الوقت بدون فقدان البيانات
-                if st.button(t("Process via AI Engine", "تحليل وتحضير الطلاب"), key="doc_process_btn"):
-                    images_to_process = []
-                    if imgs: images_to_process.extend(imgs)
-                    if doc_cam is not None: images_to_process.append(doc_cam)
-
-                    if len(images_to_process) == 0:
-                        st.warning(t("⚠️ Please capture or upload a photo first.", "⚠️ يرجى التقاط أو رفع صورة أولاً."))
-                    else:
-                        with st.spinner(t("AI is extracting faces...", "الذكاء الاصطناعي يحلل الوجوه في القاعة...")):
+                    if doc_cam is not None:
+                        with st.spinner(t("AI is processing the photo instantly...", "الذكاء الاصطناعي يحلل الصورة فوراً...")):
                             recognized = set()
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             
-                            for img in images_to_process[:10]:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                                    tmp.write(img.getvalue()); tmp_p = tmp.name
-                                try:
-                                    # 🛡️ وضع البانوراما للدكتور (مرن ليسمح بقراءة الوجوه الصغيرة أو القاعات)
-                                    res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False)
-                                    for r in res:
-                                        if not r.empty:
-                                            sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
-                                            recognized.add(sid)
-                                except: pass
-                                os.remove(tmp_p)
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                                tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
+                            try:
+                                # بالنسبة للدكتور، نستخدم نفس نموذج mtcnn ولكنه بدون فرض الكشف enforce_detection=False
+                                # للسماح بتحليل لقطات القاعة التي قد تحتوي على وجوه صغيرة أو بعيدة
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False, detector_backend='mtcnn')
+                                for r in res:
+                                    if not r.empty:
+                                        sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
+                                        recognized.add(sid)
+                            except: pass
+                            os.remove(tmp_p)
                             
                             for sid in recognized:
                                 push_db(f'/attendance/{doc_id}_{safe_cls}', {
                                     "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
                                     "time": datetime.now().strftime("%I:%M %p"), 
-                                    "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Doctor Camera/Batch"
+                                    "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Doctor Camera"
                                 })
                             if recognized:
                                 st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
                             else:
-                                st.warning(t("No matching faces found in the images.", "لم يتم التعرف على أي وجه مسجل في هذه الصور."))
+                                st.warning(t("No matching faces found in this photo.", "لم يتم التعرف على أي وجه مسجل في هذه الصورة."))
+
+                with c_up:
+                    st.markdown(f"**📂 {t('Upload Photos', 'رفع صور من الجهاز')}**")
+                    imgs = st.file_uploader(t("Upload and Process", "ارفع الصور ثم اضغط الزر بالأسفل"), accept_multiple_files=True)
+                    
+                    if st.button(t("Process Uploaded Photos", "تحليل الصور المرفوعة")):
+                        if not imgs:
+                            st.warning(t("Please upload a photo first.", "يرجى رفع صور أولاً."))
+                        else:
+                            with st.spinner(t("AI is extracting faces...", "الذكاء الاصطناعي يحلل الوجوه...")):
+                                recognized = set()
+                                folder = f"registered_faces/{doc_id}_{safe_cls}"
+                                os.makedirs(folder, exist_ok=True)
+                                
+                                for img in imgs[:10]:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                                        tmp.write(img.getvalue()); tmp_p = tmp.name
+                                    try:
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False, detector_backend='mtcnn')
+                                        for r in res:
+                                            if not r.empty:
+                                                sid = os.basename(r.iloc[0]['identity']).split('.')[0]
+                                                recognized.add(sid)
+                                    except: pass
+                                    os.remove(tmp_p)
+                                
+                                for sid in recognized:
+                                    push_db(f'/attendance/{doc_id}_{safe_cls}', {
+                                        "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
+                                        "time": datetime.now().strftime("%I:%M %p"), 
+                                        "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Batch Upload"
+                                    })
+                                if recognized:
+                                    st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
+                                else:
+                                    st.warning(t("No matching faces found in the uploaded photos.", "لم يتم التعرف على أي وجه مسجل في الصور المرفوعة."))
             else: st.warning(t("Activate a session in Operations first.", "قم بتفعيل كلاس من العمليات أولاً."))
             
         with tabs[2]:
@@ -382,5 +407,5 @@ else:
                     cols_to_show = ["date", "time", "id", "status", "distance", "method"]
                     df = df[[c for c in cols_to_show if c in df.columns]]
                     st.dataframe(df, use_container_width=True)
-                    st.download_button(t("Export Cloud CSV", "تحميل السجل (CSV)"), data=df.to_csv().encode('utf-8'), file_name="Report.csv", key="csv_btn")
+                    st.download_button(t("Export Cloud CSV", "تحميل السجل (CSV)"), data=df.to_csv().encode('utf-8'), file_name="Report.csv")
                 else: st.info(t("Database is empty.", "لا يوجد سجلات حتى الآن."))
