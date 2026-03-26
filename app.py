@@ -14,7 +14,7 @@ import math
 import glob
 
 # ==========================================
-# 1. إعدادات التصميم (صافية وواضحة)
+# 1. إعدادات التصميم (Glassmorphism & Background)
 # ==========================================
 st.set_page_config(page_title="SkyNote SaaS", page_icon="⚡", layout="wide")
 
@@ -23,28 +23,55 @@ st.markdown("""
     header {visibility: hidden;}
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
-    .stApp { background-color: #0e1117; color: #ffffff; } 
-    p, label, .stMarkdown { color: #e0e0e0 !important; font-size: 16px; }
     
+    /* صورة خلفية لقاعة جامعية حديثة */
+    .stApp { 
+        background-image: url("https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2000&auto=format&fit=crop");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    
+    /* التأثير الزجاجي الأنيق (Glassmorphism) */
+    .main .block-container {
+        background-color: rgba(15, 23, 42, 0.88); 
+        padding: 2.5rem;
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    p, label, .stMarkdown, .stText { color: #f8fafc !important; font-size: 16px; }
+    h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: 800; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); }
+    
+    /* تصميم الأزرار الحديث */
     div[data-testid="stButton"] > button {
-        background-color: #0ea5e9 !important; 
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; 
         color: #ffffff !important; 
-        border-radius: 8px !important;
+        border-radius: 12px !important;
         font-weight: 900 !important;
         font-size: 16px !important;
         height: 3.5em !important;
         width: 100% !important;
         border: none !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        transition: 0.3s;
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        transition: all 0.3s ease;
     }
     div[data-testid="stButton"] > button:hover {
-        background-color: #0284c7 !important;
-        transform: translateY(-2px);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.6);
     }
     
-    h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: bold; }
-    div[data-testid="stText"] { display: none !important; }
+    /* تجميل الجداول لتتناسب مع الخلفية */
+    [data-testid="stDataFrame"] {
+        background-color: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        padding: 5px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -131,7 +158,6 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # نبقيها صارمة في التسجيل
                             DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
@@ -172,7 +198,6 @@ if student_session_doc:
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # التعديل العبقري: استخدام SFace الخفيف جداً والذي لا ينهار
                                     res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="SFace", enforce_detection=False)
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                     
@@ -255,7 +280,13 @@ else:
             if st.button(t("🚪 Logout", "🚪 خروج")):
                 st.session_state['doc_id'] = None; st.session_state['page'] = 'Home'; st.rerun()
         
-        tabs = st.tabs([t("⚙️ Operations", "⚙️ العمليات"), t("📸 Batch Processing", "📸 تصوير القاعة"), t("📋 Live KPIs", "📋 السجلات والغياب")])
+        # 💡 التبويبات الأربعة للدكتور
+        tabs = st.tabs([
+            t("⚙️ Operations", "⚙️ العمليات"), 
+            t("📸 Batch Processing", "📸 تصوير القاعة"), 
+            t("📋 Live KPIs", "📋 السجلات والغياب"),
+            t("👥 Registered", "👥 المسجلين")
+        ])
         
         with tabs[0]:
             saved_classes = get_db(f'/doctors/{doc_id}/classes') or []
@@ -337,7 +368,6 @@ else:
                             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                 tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
                             try:
-                                # التعديل هنا لـ SFace
                                 res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", enforce_detection=False)
                                 for r in res:
                                     if not r.empty:
@@ -409,6 +439,42 @@ else:
                     df = pd.DataFrame.from_dict(data, orient='index')
                     cols_to_show = ["date", "time", "id", "status", "distance", "method"]
                     df = df[[c for c in cols_to_show if c in df.columns]]
-                    st.dataframe(df, use_container_width=True)
-                    st.download_button(t("Export Cloud CSV", "تحميل السجل (CSV)"), data=df.to_csv().encode('utf-8'), file_name="Report.csv")
-                else: st.info(t("Database is empty.", "لا يوجد سجلات حتى الآن."))
+                    
+                    st.markdown(f"### 📅 {t('Filter by Date', 'تصفية السجلات حسب اليوم')}")
+                    unique_dates = df['date'].unique().tolist()
+                    unique_dates.sort(reverse=True)
+                    
+                    selected_date = st.selectbox(t("Select Date:", "اختر اليوم لعرض الغياب والحضور:"), ["All (عرض الكل)"] + unique_dates)
+                    
+                    if selected_date != "All (عرض الكل)":
+                        df_filtered = df[df['date'] == selected_date]
+                    else:
+                        df_filtered = df
+                        
+                    st.dataframe(df_filtered, use_container_width=True)
+                    csv_filename = f"Report_{selected_date.replace('/', '-')}.csv" if selected_date != "All (عرض الكل)" else "Full_Report.csv"
+                    st.download_button(t(f"Export CSV", f"تحميل سجل ({selected_date}) كملف إكسيل"), data=df_filtered.to_csv().encode('utf-8'), file_name=csv_filename)
+                else: 
+                    st.info(t("Database is empty.", "لا يوجد سجلات حتى الآن."))
+
+        with tabs[3]:
+            active = get_db(f'/active_sessions/{doc_id}')
+            if active:
+                safe_cls = active['class_name']
+                folder = f"registered_faces/{doc_id}_{safe_cls}"
+                st.markdown(f"### 👥 {t('Registered Students Overview', 'إحصائيات الطلاب المسجلين (البصمة الوجهية)')}")
+                
+                if os.path.exists(folder):
+                    registered_files = glob.glob(os.path.join(folder, "*.jpg"))
+                    sids = [os.path.basename(f).replace('.jpg', '') for f in registered_files]
+                    
+                    st.success(f"**📈 {t('Total Registered', 'إجمالي المسجلين في هذا الكلاس')}: {len(sids)} {t('Students', 'طالب / طالبة')}**")
+                    
+                    if sids:
+                        df_sids = pd.DataFrame(sids, columns=[t("Student ID", "الرقم الجامعي المسجل")])
+                        df_sids.index += 1
+                        st.dataframe(df_sids, use_container_width=True)
+                else:
+                    st.warning(t("No students have registered their faces for this class yet.", "لا يوجد أي طلاب مسجلين في هذا الكلاس حتى الآن. يرجى تفعيل وضع Registration للطلاب."))
+            else:
+                st.info(t("Activate a session in Operations first to see registered students.", "قم بتفعيل كلاس من العمليات أولاً لعرض إحصائيات الطلاب."))
