@@ -11,12 +11,12 @@ import qrcode
 from io import BytesIO
 import random
 import math
-import glob
+import glob  # تمت الإضافة لمسح الذاكرة المؤقتة للذكاء الاصطناعي
 
 # ==========================================
-# 1. إعدادات التصميم والواجهة الاحترافية
+# 1. إعدادات التصميم (صافية وواضحة)
 # ==========================================
-st.set_page_config(page_title="SkyNote - Smart Attendance", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="SkyNote SaaS", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
@@ -44,24 +44,25 @@ st.markdown("""
     }
     
     h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: bold; }
+    div[data-testid="stText"] { display: none !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. إدارة اللغات (عربي / English)
+# 2. نظام اللغات
 # ==========================================
-if 'lang' not in st.session_state: st.session_state['lang'] = 'AR'
+if 'lang' not in st.session_state: st.session_state['lang'] = 'EN'
 
 col_lang1, col_lang2 = st.columns([8, 2])
 with col_lang2:
     if st.button("🌐 عربي / English"):
-        st.session_state['lang'] = 'EN' if st.session_state['lang'] == 'AR' else 'AR'
+        st.session_state['lang'] = 'AR' if st.session_state['lang'] == 'EN' else 'EN'
         st.rerun()
 
 def t(en, ar): return en if st.session_state['lang'] == 'EN' else ar
 
 # ==========================================
-# 3. محرك قاعدة البيانات Firebase
+# 3. محرك قاعدة البيانات ومعادلة المسافة
 # ==========================================
 DB_URL = 'https://skynote10-c7743-default-rtdb.firebaseio.com'
 
@@ -78,7 +79,7 @@ def push_db(path, data):
     except: pass
 
 def calculate_distance(lat1, lon1, lat2, lon2):
-    R = 6371000  # نصف قطر الأرض بالمتر
+    R = 6371000  
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
@@ -90,7 +91,7 @@ if 'page' not in st.session_state: st.session_state['page'] = 'Home'
 if 'doc_id' not in st.session_state: st.session_state['doc_id'] = None
 
 # ==========================================
-# 4. مسار الطالب (عبر الباركود)
+# التوجيه الذكي (نظام الطالب)
 # ==========================================
 query_params = st.query_params
 student_session_doc = query_params.get("session", None)
@@ -130,7 +131,7 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # نبقيها صارمة في التسجيل لضمان جودة الصورة المرجعية
+                            # في التسجيل نبقيها صارمة لنتأكد أنه وجه حقيقي
                             DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
@@ -139,7 +140,7 @@ if student_session_doc:
                             st.success(t("✅ Registered Successfully!", "✅ تم التسجيل بنجاح!"))
                         except ValueError:
                             os.remove(tmp_p)
-                            st.error(t("❌ Face not clear! Please capture a clear photo.", "❌ الوجه غير واضح! يرجى تصوير وجهك بوضوح لتسجيلك."))
+                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه! يرجى تصوير وجهك بوضوح لتسجيلك."))
 
         elif current_mode == "Attendance (Live)":
             if is_expired:
@@ -171,12 +172,12 @@ if student_session_doc:
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # الحل الجذري: استخدام نموذج Facenet الموثوق وإلغاء الاكتشاف الإجباري في التحضير
+                                    # الحل الجذري للطالب: إلغاء الاكتشاف الإجباري واستخدام Facenet الموثوق
+                                    # الجدار سيرفض تلقائياً ولن يتطابق، والوجه الحقيقي سيمر بسلاسة!
                                     res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="Facenet", enforce_detection=False)
                                     os.remove(tmp_p)
-                                    
                                     if not res['verified']:
-                                        st.error(t("❌ Face Mismatch! (Check your photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي!"))
+                                        st.error(t("❌ Face Mismatch! (Or blurry photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي، أو أنك تحاول تمرير صورة فارغة!"))
                                     else:
                                         if student_distance <= allowed_radius:
                                             st.balloons(); st.success(t("✅ Attendance Marked.", "✅ تم تسجيل حضورك بنجاح."))
@@ -194,14 +195,14 @@ if student_session_doc:
                                                 "distance": f"{student_distance} m",
                                                 "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
                                             })
-                                except Exception:
+                                except Exception as e:
                                     os.remove(tmp_p)
-                                    st.error(t("❌ Image Error. Capture again.", "❌ حدث خطأ في معالجة الصورة، التقطها بوضوح وحاول مرة أخرى."))
+                                    st.error(t("❌ Error processing image.", "❌ حدث خطأ في معالجة الصورة، التقطها بوضوح وحاول مرة أخرى."))
 
-# ==========================================
-# 5. مسار الدكتور ولوحة التحكم
-# ==========================================
 else:
+    # -----------------------------------------------------
+    # مسار الزوار والدكاترة 
+    # -----------------------------------------------------
     if not st.session_state['doc_id']:
         if st.session_state['page'] == 'Home':
             st.markdown(f"<h1>⚡ {t('SkyNote Cloud Architecture', 'نظام سكاي نوت السحابي')}</h1>", unsafe_allow_html=True)
@@ -217,6 +218,11 @@ else:
                 st.image("https://cdn-icons-png.flaticon.com/512/3135/3135810.png", width=140)
                 if st.button(t("👨‍🏫 Professor Portal", "👨‍🏫 بوابة الدكتور")):
                     st.session_state['page'] = 'Doctor_Auth'; st.rerun()
+
+        elif st.session_state['page'] == 'Student_Info':
+            if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية")): st.session_state['page'] = 'Home'; st.rerun()
+            st.markdown(f"<h2>📱 {t('Accessing Your Class', 'كيف تدخل كلاسك')}</h2>", unsafe_allow_html=True)
+            st.info(t("Scan the Magic QR Code displayed by your Professor.", "لتسجيل حضورك، امسح الباركود الذي يعرضه الدكتور ليتم توجيهك."))
 
         elif st.session_state['page'] == 'Doctor_Auth':
             if st.button(t("🔙 Back to Home", "🔙 العودة للرئيسية")): st.session_state['page'] = 'Home'; st.rerun()
@@ -239,93 +245,166 @@ else:
                     if reg_email and reg_pwd and reg_name:
                         doc_safe_id = reg_email.replace(".", "_").replace("@", "_")
                         set_db(f'/doctors/{doc_safe_id}', {"password": reg_pwd, "name": reg_name})
-                        st.success(t("✅ Account Created! Login now.", "✅ تم إنشاء الحساب! سجل دخولك الآن."))
+                        st.success(t("✅ Account Created! You can login now.", "✅ تم إنشاء الحساب! سجل دخولك الآن."))
     
+    # -----------------------------------------------------
+    # لوحة تحكم الدكتور 
+    # -----------------------------------------------------
     else:
         doc_id = st.session_state['doc_id']
         doc_info = get_db(f'/doctors/{doc_id}')
         doc_name = doc_info.get('name', '') if doc_info else 'Professor'
         
         c_title, c_log = st.columns([8,2])
-        with c_title: st.title(f"👨‍🏫 {t('Dr.', 'د.')} {doc_name}'s {t('Control', 'لوحة التحكم')}")
+        with c_title: st.title(f"👨‍🏫 {t('Dr.', 'د.')} {doc_name}'s {t('Command Center', 'لوحة التحكم')}")
         with c_log:
             if st.button(t("🚪 Logout", "🚪 خروج")):
                 st.session_state['doc_id'] = None; st.session_state['page'] = 'Home'; st.rerun()
         
-        tabs = st.tabs([t("⚙️ Operations", "⚙️ العمليات"), t("📸 Batch Processing", "📸 تصوير القاعة"), t("📋 Live KPIs", "📋 السجلات")])
+        tabs = st.tabs([t("⚙️ Operations", "⚙️ العمليات"), t("📸 Batch Processing", "📸 تصوير القاعة"), t("📋 Live KPIs", "📋 السجلات والغياب")])
         
         with tabs[0]:
             saved_classes = get_db(f'/doctors/{doc_id}/classes') or []
             c1, c2 = st.columns([3, 1])
-            with c1: new_c = st.text_input(t("Add Class", "أضف كلاس جديد"))
+            with c1: new_c = st.text_input(t("Add Class (e.g., ostim Univ - AI)", "أضف كلاس جديد"))
             with c2:
                 st.write(""); st.write("")
-                if st.button(t("Save", "حفظ")):
+                if st.button(t("Save Course", "حفظ الكلاس")):
                     if new_c and new_c not in saved_classes:
                         saved_classes.append(new_c)
-                        set_db(f'/doctors/{doc_id}/classes', saved_classes); st.rerun()
+                        set_db(f'/doctors/{doc_id}/classes', saved_classes)
+                        st.rerun()
             
+            st.write("---")
             if saved_classes:
-                st.markdown(f"### 📍 {t('Geofencing Setup', 'إعدادات الموقع')}")
+                st.markdown(f"### 📍 {t('Geofencing Setup', 'إعدادات الموقع (السياج الجغرافي)')}")
                 selected_class = st.selectbox(t("Select Course:", "اختر الكلاس:"), saved_classes)
                 mode = st.radio(t("Student Action:", "حالة الطلاب:"), ["Standby (Closed)", "Registration (New Students)", "Attendance (Live)"])
-                dur = st.slider(t("⏱️ Timer (Minutes)", "⏱️ مدة التحضير"), 1, 60, 5)
+                dur = st.slider(t("⏱️ Timer Window (Minutes)", "⏱️ مدة فتح التحضير (بالدقائق)"), 1, 60, 5)
                 
-                doc_loc = streamlit_geolocation()
+                c_geo1, c_geo2 = st.columns(2)
+                with c_geo1:
+                    allowed_rad = st.number_input(t("Allowed Distance (Meters)", "المسافة المسموحة (بالأمتار)"), min_value=10, max_value=5000, value=100)
+                with c_geo2:
+                    st.markdown(f"**📍 {t('Capture Classroom Location', 'تحديد موقع القاعة الحالي')}**")
+                    c_gps_doc, c_empty_doc = st.columns([1, 4])
+                    with c_gps_doc:
+                        doc_loc = streamlit_geolocation()
+                    if doc_loc['latitude']:
+                         st.success(t("Location captured!", "تم تحديد الموقع بنجاح!"))
                 
-                if st.button(t("🚀 GO LIVE", "🚀 تفعيل الجلسة")):
-                    lat_val = doc_loc['latitude'] if doc_loc['latitude'] else 0.0
-                    expires_at = (datetime.now() + timedelta(minutes=dur)).strftime("%Y-%m-%d %H:%M:%S")
-                    set_db(f'/active_sessions/{doc_id}', {
-                        "class_name": selected_class.replace(" ", "_"), "display_name": selected_class,
-                        "mode": mode, "expires_at": expires_at, "doc_lat": lat_val,
-                        "doc_lon": doc_loc['longitude'] if doc_loc['longitude'] else 0.0, "allowed_radius": 100
-                    })
-                    st.success(f"✅ {t('Active until', 'مفعل حتى')} {expires_at}")
+                if st.button(t("🚀 GO LIVE", "🚀 تفعيل الجلسة للطلاب")):
+                    lat_val = doc_loc['latitude'] if doc_loc and doc_loc.get('latitude') else 0.0
+                    lon_val = doc_loc['longitude'] if doc_loc and doc_loc.get('longitude') else 0.0
+                    
+                    if mode == "Attendance (Live)" and lat_val == 0.0:
+                        st.warning(t("Please capture location first!", "يرجى تحديد موقع القاعة قبل التفعيل!"))
+                    else:
+                        expires_at = (datetime.now() + timedelta(minutes=dur)).strftime("%Y-%m-%d %H:%M:%S")
+                        set_db(f'/active_sessions/{doc_id}', {
+                            "class_name": selected_class.replace(" ", "_").replace("/", "_"),
+                            "display_name": selected_class,
+                            "mode": mode, "expires_at": expires_at,
+                            "doc_lat": lat_val,
+                            "doc_lon": lon_val,
+                            "allowed_radius": allowed_rad
+                        })
+                        st.success(f"✅ {t('Session Active until', 'الجلسة مفعلة حتى')} {expires_at}")
                 
-                # تحديث رابط الباركود ليشير إلى السيرفر الجديد
+                st.write("---")
+                st.markdown(f"### 📱 {t('Magic QR Code', 'باركود التوجيه الذكي')}")
                 smart_url = f"https://sky-note-v2-qmfaubuyvyndbdukcrwwjw.streamlit.app/?session={doc_id}"
                 qr = qrcode.make(smart_url)
                 buf = BytesIO(); qr.save(buf, format="PNG")
-                st.image(buf.getvalue(), width=200, caption=t("Scan this QR", "امسح هذا الباركود"))
+                st.image(buf.getvalue(), width=200)
 
         with tabs[1]:
             active = get_db(f'/active_sessions/{doc_id}')
             if active and active['mode'] != "Standby (Closed)":
                 safe_cls = active['class_name']
                 st.subheader(f"{t('AI Batch Marking:', 'التحضير الذكي لـ:')} {active['display_name']}")
-                doc_cam = st.camera_input(t("Capture Classroom", "التقط صورة للقاعة"))
                 
-                if doc_cam:
-                    with st.spinner(t("DeepFace Analyzing...", "جاري التحليل...")):
-                        recognized = set()
-                        folder = f"registered_faces/{doc_id}_{safe_cls}"
-                        os.makedirs(folder, exist_ok=True)
-                        
-                        # الحل الجذري لمسح الذاكرة القديمة للدكتور
-                        for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
-                            try: os.remove(pkl_file)
+                c_cam, c_up = st.columns(2)
+                
+                with c_cam:
+                    st.markdown(f"**📷 {t('Live Camera (Auto-Process)', 'كاميرا التحضير (تحليل فوري وتلقائي)')}**")
+                    doc_cam = st.camera_input(t("Take photo", "التقط الصورة"))
+                    
+                    if doc_cam is not None:
+                        with st.spinner(t("AI is processing the photo instantly...", "الذكاء الاصطناعي يحلل الصورة فوراً...")):
+                            recognized = set()
+                            folder = f"registered_faces/{doc_id}_{safe_cls}"
+                            os.makedirs(folder, exist_ok=True)
+                            
+                            # الحل الجذري لكيمرة الدكتور: تدمير ذاكرة التخزين القديمة قبل كل تحليل
+                            for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
+                                try: os.remove(pkl_file)
+                                except: pass
+                            
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                                tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
+                            try:
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
+                                for r in res:
+                                    if not r.empty:
+                                        sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
+                                        recognized.add(sid)
                             except: pass
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                            tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
-                        try:
-                            res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
-                            for r in res:
-                                if not r.empty:
-                                    sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
-                                    recognized.add(sid)
-                        except: pass
-                        os.remove(tmp_p)
-                        
-                        for sid in recognized:
-                            push_db(f'/attendance/{doc_id}_{safe_cls}', {
-                                "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
-                                "time": datetime.now().strftime("%I:%M %p"), "status": "✅ Present (Doc)", "method": "Batch"
-                            })
-                        if recognized: st.success(f"Found IDs: {list(recognized)}")
-                        else: st.warning("No faces matched.")
+                            os.remove(tmp_p)
+                            
+                            for sid in recognized:
+                                push_db(f'/attendance/{doc_id}_{safe_cls}', {
+                                    "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
+                                    "time": datetime.now().strftime("%I:%M %p"), 
+                                    "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Doctor Camera"
+                                })
+                            if recognized:
+                                st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
+                            else:
+                                st.warning(t("No matching faces found in this photo.", "لم يتم التعرف على أي وجه مسجل في هذه الصورة."))
 
+                with c_up:
+                    st.markdown(f"**📂 {t('Upload Photos', 'رفع صور من الجهاز')}**")
+                    imgs = st.file_uploader(t("Upload and Process", "ارفع الصور ثم اضغط الزر بالأسفل"), accept_multiple_files=True)
+                    
+                    if st.button(t("Process Uploaded Photos", "تحليل الصور المرفوعة")):
+                        if not imgs:
+                            st.warning(t("Please upload a photo first.", "يرجى رفع صور أولاً."))
+                        else:
+                            with st.spinner(t("AI is extracting faces...", "الذكاء الاصطناعي يحلل الوجوه...")):
+                                recognized = set()
+                                folder = f"registered_faces/{doc_id}_{safe_cls}"
+                                os.makedirs(folder, exist_ok=True)
+                                
+                                # تنظيف الذاكرة للصور المرفوعة أيضاً
+                                for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
+                                    try: os.remove(pkl_file)
+                                    except: pass
+                                
+                                for img in imgs[:10]:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                                        tmp.write(img.getvalue()); tmp_p = tmp.name
+                                    try:
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
+                                        for r in res:
+                                            if not r.empty:
+                                                sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
+                                                recognized.add(sid)
+                                    except: pass
+                                    os.remove(tmp_p)
+                                
+                                for sid in recognized:
+                                    push_db(f'/attendance/{doc_id}_{safe_cls}', {
+                                        "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
+                                        "time": datetime.now().strftime("%I:%M %p"), 
+                                        "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Batch Upload"
+                                    })
+                                if recognized:
+                                    st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
+                                else:
+                                    st.warning(t("No matching faces found in the uploaded photos.", "لم يتم التعرف على أي وجه مسجل في الصور المرفوعة."))
+            else: st.warning(t("Activate a session in Operations first.", "قم بتفعيل كلاس من العمليات أولاً."))
+            
         with tabs[2]:
             active = get_db(f'/active_sessions/{doc_id}')
             if active:
@@ -333,5 +412,8 @@ else:
                 data = get_db(f"/attendance/{doc_id}_{safe_cls}")
                 if data:
                     df = pd.DataFrame.from_dict(data, orient='index')
+                    cols_to_show = ["date", "time", "id", "status", "distance", "method"]
+                    df = df[[c for c in cols_to_show if c in df.columns]]
                     st.dataframe(df, use_container_width=True)
-                    st.download_button("Export CSV", df.to_csv().encode('utf-8'), "Report.csv")
+                    st.download_button(t("Export Cloud CSV", "تحميل السجل (CSV)"), data=df.to_csv().encode('utf-8'), file_name="Report.csv")
+                else: st.info(t("Database is empty.", "لا يوجد سجلات حتى الآن."))
