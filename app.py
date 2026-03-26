@@ -11,7 +11,7 @@ import qrcode
 from io import BytesIO
 import random
 import math
-import glob  # تمت الإضافة لمسح الذاكرة المؤقتة للذكاء الاصطناعي
+import glob
 
 # ==========================================
 # 1. إعدادات التصميم (صافية وواضحة)
@@ -131,7 +131,6 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # في التسجيل نبقيها صارمة لنتأكد أنه وجه حقيقي
                             DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
@@ -172,10 +171,9 @@ if student_session_doc:
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # الحل الجذري للطالب: إلغاء الاكتشاف الإجباري واستخدام Facenet الموثوق
-                                    # الجدار سيرفض تلقائياً ولن يتطابق، والوجه الحقيقي سيمر بسلاسة!
                                     res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="Facenet", enforce_detection=False)
-                                    os.remove(tmp_p)
+                                    if os.path.exists(tmp_p): os.remove(tmp_p)
+                                    
                                     if not res['verified']:
                                         st.error(t("❌ Face Mismatch! (Or blurry photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي، أو أنك تحاول تمرير صورة فارغة!"))
                                     else:
@@ -195,9 +193,10 @@ if student_session_doc:
                                                 "distance": f"{student_distance} m",
                                                 "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
                                             })
+                                # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي للطالب
                                 except Exception as e:
-                                    os.remove(tmp_p)
-                                    st.error(t("❌ Error processing image.", "❌ حدث خطأ في معالجة الصورة، التقطها بوضوح وحاول مرة أخرى."))
+                                    if os.path.exists(tmp_p): os.remove(tmp_p)
+                                    st.error(f"❌ رسالة العطل من السيرفر (الطالب): {str(e)}")
 
 else:
     # -----------------------------------------------------
@@ -336,7 +335,6 @@ else:
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             
-                            # الحل الجذري لكيمرة الدكتور: تدمير ذاكرة التخزين القديمة قبل كل تحليل
                             for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
                                 try: os.remove(pkl_file)
                                 except: pass
@@ -349,8 +347,10 @@ else:
                                     if not r.empty:
                                         sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
                                         recognized.add(sid)
-                            except: pass
-                            os.remove(tmp_p)
+                            # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي لكاميرا الدكتور
+                            except Exception as e: 
+                                st.error(f"❌ رسالة العطل من السيرفر (كاميرا الدكتور): {str(e)}")
+                            if os.path.exists(tmp_p): os.remove(tmp_p)
                             
                             for sid in recognized:
                                 push_db(f'/attendance/{doc_id}_{safe_cls}', {
@@ -376,7 +376,6 @@ else:
                                 folder = f"registered_faces/{doc_id}_{safe_cls}"
                                 os.makedirs(folder, exist_ok=True)
                                 
-                                # تنظيف الذاكرة للصور المرفوعة أيضاً
                                 for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
                                     try: os.remove(pkl_file)
                                     except: pass
@@ -390,8 +389,10 @@ else:
                                             if not r.empty:
                                                 sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
                                                 recognized.add(sid)
-                                    except: pass
-                                    os.remove(tmp_p)
+                                    # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي لرفع الصور
+                                    except Exception as e:
+                                        st.error(f"❌ رسالة العطل من السيرفر (رفع صور الدكتور): {str(e)}")
+                                    if os.path.exists(tmp_p): os.remove(tmp_p)
                                 
                                 for sid in recognized:
                                     push_db(f'/attendance/{doc_id}_{safe_cls}', {
