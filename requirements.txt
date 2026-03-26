@@ -1,0 +1,10 @@
+streamlit
+deepface
+opencv-python-headless
+requests
+pandas
+streamlit-geolocation
+qrcode
+pillow
+tensorflow-cpu==2.15.0
+tf-keras
