@@ -14,7 +14,7 @@ import math
 import glob
 
 # ==========================================
-# 1. إعدادات التصميم (Glassmorphism & Background)
+# 1. إعدادات التصميم (Dark Glassmorphism & Enhanced UI)
 # ==========================================
 st.set_page_config(page_title="SkyNote SaaS", page_icon="⚡", layout="wide")
 
@@ -24,31 +24,42 @@ st.markdown("""
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     
-    /* صورة خلفية لقاعة جامعية حديثة */
+    /* 1. صورة خلفية لقاعة جامعية مع تظليل داكن (Dark Overlay) لبروز المحتوى */
     .stApp { 
-        background-image: url("https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2000&auto=format&fit=crop");
+        background: linear-gradient(rgba(10, 15, 30, 0.75), rgba(10, 15, 30, 0.85)), 
+                    url("https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2000&auto=format&fit=crop");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
     }
     
-    /* التأثير الزجاجي الأنيق (Glassmorphism) */
+    /* 2. التأثير الزجاجي (Glassmorphism) مع وضوح عالي للقراءة */
     .main .block-container {
-        background-color: rgba(15, 23, 42, 0.88); 
+        background-color: rgba(15, 23, 42, 0.65); /* شفافية مدروسة */
         padding: 2.5rem;
         border-radius: 20px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
         margin-top: 2rem;
         margin-bottom: 2rem;
     }
 
-    p, label, .stMarkdown, .stText { color: #f8fafc !important; font-size: 16px; }
-    h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: 800; text-shadow: 1px 1px 3px rgba(0,0,0,0.6); }
+    /* 3. توضيح النصوص وتناسق الألوان مع إضافة ظلال للقراءة المريحة */
+    p, label, .stMarkdown, .stText, li { 
+        color: #f1f5f9 !important; 
+        font-size: 16.5px; 
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
+    }
+    h1, h2, h3, h4, h5 { 
+        color: #38bdf8 !important; 
+        text-align: center; 
+        font-weight: 800; 
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
+    }
     
-    /* تصميم الأزرار الحديث */
+    /* 4. تصميم الأزرار الحديث (تدرج لوني 3D متناسق مع النمط الزجاجي) */
     div[data-testid="stButton"] > button {
         background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; 
         color: #ffffff !important; 
@@ -66,9 +77,9 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(14, 165, 233, 0.6);
     }
     
-    /* تجميل الجداول لتتناسب مع الخلفية */
+    /* 5. تجميل الجداول وخانات الإدخال لتتناسب مع الخلفية المظللة */
     [data-testid="stDataFrame"] {
-        background-color: rgba(255, 255, 255, 0.03);
+        background-color: rgba(255, 255, 255, 0.05);
         border-radius: 10px;
         padding: 5px;
     }
@@ -280,7 +291,6 @@ else:
             if st.button(t("🚪 Logout", "🚪 خروج")):
                 st.session_state['doc_id'] = None; st.session_state['page'] = 'Home'; st.rerun()
         
-        # 💡 التبويبات الأربعة للدكتور
         tabs = st.tabs([
             t("⚙️ Operations", "⚙️ العمليات"), 
             t("📸 Batch Processing", "📸 تصوير القاعة"), 
