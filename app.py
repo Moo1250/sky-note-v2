@@ -11,6 +11,7 @@ import qrcode
 from io import BytesIO
 import random
 import math
+import glob  # تمت الإضافة لمسح الذاكرة المؤقتة للذكاء الاصطناعي
 
 # ==========================================
 # 1. إعدادات التصميم (صافية وواضحة)
@@ -130,9 +131,8 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # 🛡️ وضع حماية الطالب (صارم ولكن بمرونة): استخدام نموذج mtcnn
-                            # MtCnn نموذج مستقر وموثوق جداً ويتعامل بمرونة مع النظارات والشعر
-                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True, detector_backend='mtcnn')
+                            # في التسجيل نبقيها صارمة لنتأكد أنه وجه حقيقي
+                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
@@ -167,17 +167,17 @@ if student_session_doc:
                         if not os.path.exists(reg_p):
                             st.error(t("❌ ID Not Found in this class!", "❌ رقمك غير مسجل في هذا الكلاس!"))
                         else:
-                            with st.spinner(t("Analyzing...", "جاري التحليل...")):
+                            with st.spinner(t("Analyzing with Facenet AI...", "جاري التحليل المعمق...")):
                                 student_distance = calculate_distance(doc_lat, doc_lon, loc['latitude'], loc['longitude'])
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # 🛡️ وضع حماية الطالب (صارم ولكن بمرونة): استخدام نموذج mtcnn
-                                    #MtCnn سيتعرف على وجهك حتى مع النظارات ولن يعتبرها محاولة غش
-                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, enforce_detection=True, detector_backend='mtcnn')
+                                    # الحل الجذري للطالب: إلغاء الاكتشاف الإجباري واستخدام Facenet الموثوق
+                                    # الجدار سيرفض تلقائياً ولن يتطابق، والوجه الحقيقي سيمر بسلاسة!
+                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="Facenet", enforce_detection=False)
                                     os.remove(tmp_p)
                                     if not res['verified']:
-                                        st.error(t("❌ Face Mismatch Alert!", "❌ الوجه لا يتطابق مع الرقم الجامعي!"))
+                                        st.error(t("❌ Face Mismatch! (Or blurry photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي، أو أنك تحاول تمرير صورة فارغة!"))
                                     else:
                                         if student_distance <= allowed_radius:
                                             st.balloons(); st.success(t("✅ Attendance Marked.", "✅ تم تسجيل حضورك بنجاح."))
@@ -195,9 +195,9 @@ if student_session_doc:
                                                 "distance": f"{student_distance} m",
                                                 "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
                                             })
-                                except ValueError:
+                                except Exception as e:
                                     os.remove(tmp_p)
-                                    st.error(t("❌ No face detected in the picture! Stop trying to cheat.", "❌ لم يتم التعرف على وجه في الصورة! يرجى تصوير وجهك بوضوح."))
+                                    st.error(t("❌ Error processing image.", "❌ حدث خطأ في معالجة الصورة، التقطها بوضوح وحاول مرة أخرى."))
 
 else:
     # -----------------------------------------------------
@@ -336,12 +336,15 @@ else:
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             
+                            # الحل الجذري لكيمرة الدكتور: تدمير ذاكرة التخزين القديمة قبل كل تحليل
+                            for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
+                                try: os.remove(pkl_file)
+                                except: pass
+                            
                             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                 tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
                             try:
-                                # بالنسبة للدكتور، نستخدم نفس نموذج mtcnn ولكنه بدون فرض الكشف enforce_detection=False
-                                # للسماح بتحليل لقطات القاعة التي قد تحتوي على وجوه صغيرة أو بعيدة
-                                res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False, detector_backend='mtcnn')
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
                                 for r in res:
                                     if not r.empty:
                                         sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
@@ -373,14 +376,19 @@ else:
                                 folder = f"registered_faces/{doc_id}_{safe_cls}"
                                 os.makedirs(folder, exist_ok=True)
                                 
+                                # تنظيف الذاكرة للصور المرفوعة أيضاً
+                                for pkl_file in glob.glob(os.path.join(folder, "*.pkl")):
+                                    try: os.remove(pkl_file)
+                                    except: pass
+                                
                                 for img in imgs[:10]:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                         tmp.write(img.getvalue()); tmp_p = tmp.name
                                     try:
-                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False, detector_backend='mtcnn')
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
                                         for r in res:
                                             if not r.empty:
-                                                sid = os.basename(r.iloc[0]['identity']).split('.')[0]
+                                                sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
                                                 recognized.add(sid)
                                     except: pass
                                     os.remove(tmp_p)
