@@ -166,12 +166,13 @@ if student_session_doc:
                         if not os.path.exists(reg_p):
                             st.error(t("❌ ID Not Found in this class!", "❌ رقمك غير مسجل في هذا الكلاس!"))
                         else:
-                            with st.spinner(t("Analyzing with Facenet AI...", "جاري التحليل المعمق...")):
+                            with st.spinner(t("Analyzing...", "جاري التحليل المعمق...")):
                                 student_distance = calculate_distance(doc_lat, doc_lon, loc['latitude'], loc['longitude'])
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="Facenet", enforce_detection=False)
+                                    # التعديل هنا: حذفنا Facenet ورجعنا للافتراضي الجاهز ولكن بإلغاء الكشف الصارم
+                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, enforce_detection=False)
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                     
                                     if not res['verified']:
@@ -193,15 +194,11 @@ if student_session_doc:
                                                 "distance": f"{student_distance} m",
                                                 "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
                                             })
-                                # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي للطالب
                                 except Exception as e:
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                     st.error(f"❌ رسالة العطل من السيرفر (الطالب): {str(e)}")
 
 else:
-    # -----------------------------------------------------
-    # مسار الزوار والدكاترة 
-    # -----------------------------------------------------
     if not st.session_state['doc_id']:
         if st.session_state['page'] == 'Home':
             st.markdown(f"<h1>⚡ {t('SkyNote Cloud Architecture', 'نظام سكاي نوت السحابي')}</h1>", unsafe_allow_html=True)
@@ -246,9 +243,6 @@ else:
                         set_db(f'/doctors/{doc_safe_id}', {"password": reg_pwd, "name": reg_name})
                         st.success(t("✅ Account Created! You can login now.", "✅ تم إنشاء الحساب! سجل دخولك الآن."))
     
-    # -----------------------------------------------------
-    # لوحة تحكم الدكتور 
-    # -----------------------------------------------------
     else:
         doc_id = st.session_state['doc_id']
         doc_info = get_db(f'/doctors/{doc_id}')
@@ -342,12 +336,12 @@ else:
                             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                 tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
                             try:
-                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
+                                # التعديل هنا أيضاً: العودة للموديل الافتراضي المستقر
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False)
                                 for r in res:
                                     if not r.empty:
                                         sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
                                         recognized.add(sid)
-                            # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي لكاميرا الدكتور
                             except Exception as e: 
                                 st.error(f"❌ رسالة العطل من السيرفر (كاميرا الدكتور): {str(e)}")
                             if os.path.exists(tmp_p): os.remove(tmp_p)
@@ -384,12 +378,11 @@ else:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                         tmp.write(img.getvalue()); tmp_p = tmp.name
                                     try:
-                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="Facenet", enforce_detection=False)
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False)
                                         for r in res:
                                             if not r.empty:
                                                 sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
                                                 recognized.add(sid)
-                                    # 💡 التعديل هنا لاكتشاف الخطأ الحقيقي لرفع الصور
                                     except Exception as e:
                                         st.error(f"❌ رسالة العطل من السيرفر (رفع صور الدكتور): {str(e)}")
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
