@@ -131,6 +131,7 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
+                            # نبقيها صارمة في التسجيل
                             DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
@@ -166,13 +167,13 @@ if student_session_doc:
                         if not os.path.exists(reg_p):
                             st.error(t("❌ ID Not Found in this class!", "❌ رقمك غير مسجل في هذا الكلاس!"))
                         else:
-                            with st.spinner(t("Analyzing...", "جاري التحليل المعمق...")):
+                            with st.spinner(t("Analyzing with SFace AI...", "جاري التحليل السريع والمطابقة...")):
                                 student_distance = calculate_distance(doc_lat, doc_lon, loc['latitude'], loc['longitude'])
                                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                     tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                 try:
-                                    # التعديل هنا: حذفنا Facenet ورجعنا للافتراضي الجاهز ولكن بإلغاء الكشف الصارم
-                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, enforce_detection=False)
+                                    # التعديل العبقري: استخدام SFace الخفيف جداً والذي لا ينهار
+                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="SFace", enforce_detection=False)
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                     
                                     if not res['verified']:
@@ -336,8 +337,8 @@ else:
                             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                 tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
                             try:
-                                # التعديل هنا أيضاً: العودة للموديل الافتراضي المستقر
-                                res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False)
+                                # التعديل هنا لـ SFace
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", enforce_detection=False)
                                 for r in res:
                                     if not r.empty:
                                         sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
@@ -378,7 +379,7 @@ else:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                         tmp.write(img.getvalue()); tmp_p = tmp.name
                                     try:
-                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, enforce_detection=False)
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", enforce_detection=False)
                                         for r in res:
                                             if not r.empty:
                                                 sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
