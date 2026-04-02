@@ -14,7 +14,7 @@ import math
 import glob
 
 # ==========================================
-# 1. إعدادات التصميم (Dark Glassmorphism & Enhanced UI)
+# 1. إعدادات التصميم (Dark Glassmorphism)
 # ==========================================
 st.set_page_config(page_title="SkyNote SaaS", page_icon="⚡", layout="wide")
 
@@ -24,7 +24,6 @@ st.markdown("""
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     
-    /* 1. صورة خلفية لقاعة جامعية مع تظليل داكن (Dark Overlay) لبروز المحتوى */
     .stApp { 
         background: linear-gradient(rgba(10, 15, 30, 0.75), rgba(10, 15, 30, 0.85)), 
                     url("https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2000&auto=format&fit=crop");
@@ -33,9 +32,8 @@ st.markdown("""
         background-attachment: fixed;
     }
     
-    /* 2. التأثير الزجاجي (Glassmorphism) مع وضوح عالي للقراءة */
     .main .block-container {
-        background-color: rgba(15, 23, 42, 0.65); /* شفافية مدروسة */
+        background-color: rgba(15, 23, 42, 0.65); 
         padding: 2.5rem;
         border-radius: 20px;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
@@ -46,20 +44,9 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* 3. توضيح النصوص وتناسق الألوان مع إضافة ظلال للقراءة المريحة */
-    p, label, .stMarkdown, .stText, li { 
-        color: #f1f5f9 !important; 
-        font-size: 16.5px; 
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
-    }
-    h1, h2, h3, h4, h5 { 
-        color: #38bdf8 !important; 
-        text-align: center; 
-        font-weight: 800; 
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
-    }
+    p, label, .stMarkdown, .stText, li { color: #f1f5f9 !important; font-size: 16.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+    h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
     
-    /* 4. تصميم الأزرار الحديث (تدرج لوني 3D متناسق مع النمط الزجاجي) */
     div[data-testid="stButton"] > button {
         background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; 
         color: #ffffff !important; 
@@ -77,12 +64,7 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(14, 165, 233, 0.6);
     }
     
-    /* 5. تجميل الجداول وخانات الإدخال لتتناسب مع الخلفية المظللة */
-    [data-testid="stDataFrame"] {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        padding: 5px;
-    }
+    [data-testid="stDataFrame"] { background-color: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -100,7 +82,7 @@ with col_lang2:
 def t(en, ar): return en if st.session_state['lang'] == 'EN' else ar
 
 # ==========================================
-# 3. محرك قاعدة البيانات ومعادلة المسافة
+# 3. محرك قاعدة البيانات
 # ==========================================
 DB_URL = 'https://skynote10-c7743-default-rtdb.firebaseio.com'
 
@@ -169,7 +151,7 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=True)
+                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=False)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
@@ -204,36 +186,44 @@ if student_session_doc:
                         if not os.path.exists(reg_p):
                             st.error(t("❌ ID Not Found in this class!", "❌ رقمك غير مسجل في هذا الكلاس!"))
                         else:
-                            with st.spinner(t("Analyzing with SFace AI...", "جاري التحليل السريع والمطابقة...")):
-                                student_distance = calculate_distance(doc_lat, doc_lon, loc['latitude'], loc['longitude'])
-                                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-                                    tmp.write(student_img.getvalue()); tmp_p = tmp.name
-                                try:
-                                    res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="SFace", enforce_detection=False)
-                                    if os.path.exists(tmp_p): os.remove(tmp_p)
-                                    
-                                    if not res['verified']:
-                                        st.error(t("❌ Face Mismatch! (Or blurry photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي، أو أنك تحاول تمرير صورة فارغة!"))
-                                    else:
-                                        if student_distance <= allowed_radius:
-                                            st.balloons(); st.success(t("✅ Attendance Marked.", "✅ تم تسجيل حضورك بنجاح."))
-                                            push_db(f"/attendance/{doc_id}_{safe_cls}", {
-                                                "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
-                                                "time": datetime.now().strftime("%I:%M %p"),
-                                                "distance": f"{student_distance} m",
-                                                "status": "✅ Present (Valid)", "method": "Self-Scan"
-                                            })
+                            # فلتر منع التكرار للطالب
+                            today_str = datetime.now().strftime("%Y-%m-%d")
+                            existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
+                            already_present = any(v.get('id') == sid and v.get('date') == today_str and "✅ Present" in v.get('status', '') for v in existing_data.values())
+                            
+                            if already_present:
+                                st.info(t("ℹ️ You are already marked present for today!", "ℹ️ لقد تم تسجيل حضورك مسبقاً لهذا اليوم! لا حاجة للإعادة."))
+                            else:
+                                with st.spinner(t("Analyzing with SFace AI...", "جاري التحليل السريع والمطابقة...")):
+                                    student_distance = calculate_distance(doc_lat, doc_lon, loc['latitude'], loc['longitude'])
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
+                                        tmp.write(student_img.getvalue()); tmp_p = tmp.name
+                                    try:
+                                        res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="SFace", enforce_detection=False)
+                                        if os.path.exists(tmp_p): os.remove(tmp_p)
+                                        
+                                        if not res['verified']:
+                                            st.error(t("❌ Face Mismatch! (Or blurry photo)", "❌ الوجه لا يتطابق مع الرقم الجامعي، أو أنك تحاول تمرير صورة فارغة!"))
                                         else:
-                                            st.error(f"❌ {t('Out of bounds!', 'أنت بعيد عن القاعة!')} {student_distance}m")
-                                            push_db(f"/attendance/{doc_id}_{safe_cls}", {
-                                                "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
-                                                "time": datetime.now().strftime("%I:%M %p"),
-                                                "distance": f"{student_distance} m",
-                                                "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
-                                            })
-                                except Exception as e:
-                                    if os.path.exists(tmp_p): os.remove(tmp_p)
-                                    st.error(f"❌ رسالة العطل من السيرفر (الطالب): {str(e)}")
+                                            if student_distance <= allowed_radius:
+                                                st.balloons(); st.success(t("✅ Attendance Marked.", "✅ تم تسجيل حضورك بنجاح."))
+                                                push_db(f"/attendance/{doc_id}_{safe_cls}", {
+                                                    "id": sid, "date": today_str,
+                                                    "time": datetime.now().strftime("%I:%M %p"),
+                                                    "distance": f"{student_distance} m",
+                                                    "status": "✅ Present (Valid)", "method": "Self-Scan"
+                                                })
+                                            else:
+                                                st.error(f"❌ {t('Out of bounds!', 'أنت بعيد عن القاعة!')} {student_distance}m")
+                                                push_db(f"/attendance/{doc_id}_{safe_cls}", {
+                                                    "id": sid, "date": today_str,
+                                                    "time": datetime.now().strftime("%I:%M %p"),
+                                                    "distance": f"{student_distance} m",
+                                                    "status": "❌ Rejected (Wrong Location)", "method": "Self-Scan"
+                                                })
+                                    except Exception as e:
+                                        if os.path.exists(tmp_p): os.remove(tmp_p)
+                                        st.error(f"❌ رسالة العطل من السيرفر (الطالب): {str(e)}")
 
 else:
     if not st.session_state['doc_id']:
@@ -387,14 +377,26 @@ else:
                                 st.error(f"❌ رسالة العطل من السيرفر (كاميرا الدكتور): {str(e)}")
                             if os.path.exists(tmp_p): os.remove(tmp_p)
                             
+                            # فلتر منع التكرار لكاميرا الدكتور
+                            today_str = datetime.now().strftime("%Y-%m-%d")
+                            existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
+                            already_present_sids = [v.get('id') for v in existing_data.values() if v.get('date') == today_str and "✅ Present" in v.get('status', '')]
+                            
+                            new_attendees = 0
                             for sid in recognized:
-                                push_db(f'/attendance/{doc_id}_{safe_cls}', {
-                                    "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
-                                    "time": datetime.now().strftime("%I:%M %p"), 
-                                    "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Doctor Camera"
-                                })
-                            if recognized:
-                                st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
+                                if sid not in already_present_sids:
+                                    push_db(f'/attendance/{doc_id}_{safe_cls}', {
+                                        "id": sid, "date": today_str,
+                                        "time": datetime.now().strftime("%I:%M %p"), 
+                                        "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Doctor Camera"
+                                    })
+                                    already_present_sids.append(sid)
+                                    new_attendees += 1
+                                    
+                            if new_attendees > 0:
+                                st.success(f"{t('Successfully processed NEW IDs:', 'تم تحضير أرقام جديدة بنجاح:')} {new_attendees}")
+                            elif recognized:
+                                st.info(t("All detected students are already marked present today.", "جميع الطلاب الموجودين في الصورة تم تحضيرهم مسبقاً اليوم."))
                             else:
                                 st.warning(t("No matching faces found in this photo.", "لم يتم التعرف على أي وجه مسجل في هذه الصورة."))
 
@@ -428,14 +430,26 @@ else:
                                         st.error(f"❌ رسالة العطل من السيرفر (رفع صور الدكتور): {str(e)}")
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                 
+                                # فلتر منع التكرار لرفع الصور
+                                today_str = datetime.now().strftime("%Y-%m-%d")
+                                existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
+                                already_present_sids = [v.get('id') for v in existing_data.values() if v.get('date') == today_str and "✅ Present" in v.get('status', '')]
+                                
+                                new_attendees = 0
                                 for sid in recognized:
-                                    push_db(f'/attendance/{doc_id}_{safe_cls}', {
-                                        "id": sid, "date": datetime.now().strftime("%Y-%m-%d"),
-                                        "time": datetime.now().strftime("%I:%M %p"), 
-                                        "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Batch Upload"
-                                    })
-                                if recognized:
-                                    st.success(f"{t('Successfully processed IDs:', 'تم تحضير الأرقام بنجاح:')} {list(recognized)}")
+                                    if sid not in already_present_sids:
+                                        push_db(f'/attendance/{doc_id}_{safe_cls}', {
+                                            "id": sid, "date": today_str,
+                                            "time": datetime.now().strftime("%I:%M %p"), 
+                                            "distance": "0 m (Doctor)", "status": "✅ Present", "method": "Batch Upload"
+                                        })
+                                        already_present_sids.append(sid)
+                                        new_attendees += 1
+                                        
+                                if new_attendees > 0:
+                                    st.success(f"{t('Successfully processed NEW IDs:', 'تم تحضير أرقام جديدة بنجاح:')} {new_attendees}")
+                                elif recognized:
+                                    st.info(t("All detected students are already marked present today.", "جميع الطلاب الموجودين في الصور تم تحضيرهم مسبقاً اليوم."))
                                 else:
                                     st.warning(t("No matching faces found in the uploaded photos.", "لم يتم التعرف على أي وجه مسجل في الصور المرفوعة."))
             else: st.warning(t("Activate a session in Operations first.", "قم بتفعيل كلاس من العمليات أولاً."))
