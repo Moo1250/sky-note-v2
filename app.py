@@ -14,9 +14,9 @@ import math
 import glob
 
 # ==========================================
-# 1. إعدادات التصميم (Dark Glassmorphism)
+# 1. إعدادات التصميم (Dark Glassmorphism & Thin Footer)
 # ==========================================
-st.set_page_config(page_title="SkyNote SaaS", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="SkyNote", page_icon="⚡", layout="wide")
 
 st.markdown("""
     <style>
@@ -47,6 +47,21 @@ st.markdown("""
     p, label, .stMarkdown, .stText, li { color: #f1f5f9 !important; font-size: 16.5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
     h1, h2, h3, h4, h5 { color: #38bdf8 !important; text-align: center; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
     
+    /* تصميم الفوتر الثابت بأسماء المطورين (أسفل الشاشة، خط نحيف، إنجليزي فقط) */
+    .custom-footer {
+        position: fixed;
+        bottom: 12px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: #cbd5e1;
+        font-size: 13px;
+        font-weight: 300; /* Weight 300 = Thin */
+        letter-spacing: 1.5px;
+        z-index: 999;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+    
     div[data-testid="stButton"] > button {
         background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; 
         color: #ffffff !important; 
@@ -67,6 +82,9 @@ st.markdown("""
     [data-testid="stDataFrame"] { background-color: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 5px; }
     </style>
 """, unsafe_allow_html=True)
+
+# إضافة الفوتر الثابت ليظهر في كل الصفحات
+st.markdown("<div class='custom-footer'>Developed by: Mohammed & Anas</div>", unsafe_allow_html=True)
 
 # ==========================================
 # 2. نظام اللغات
@@ -120,7 +138,7 @@ if student_session_doc:
     doc_id = student_session_doc
     active = get_db(f'/active_sessions/{doc_id}')
     
-    st.markdown(f"<h1>⚡ {t('SkyNote Student Portal', 'بوابة الطالب')}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1>⚡ {t('SkyNote', 'سكاي نوت - بوابة الطالب')}</h1>", unsafe_allow_html=True)
     
     if not active or active['mode'] == "Standby (Closed)":
         st.info(t("⏳ System is closed. Please wait for the Doctor.", "⏳ النظام مغلق. يرجى انتظار الدكتور."))
@@ -186,7 +204,6 @@ if student_session_doc:
                         if not os.path.exists(reg_p):
                             st.error(t("❌ ID Not Found in this class!", "❌ رقمك غير مسجل في هذا الكلاس!"))
                         else:
-                            # فلتر منع التكرار للطالب
                             today_str = datetime.now().strftime("%Y-%m-%d")
                             existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
                             already_present = any(v.get('id') == sid and v.get('date') == today_str and "✅ Present" in v.get('status', '') for v in existing_data.values())
@@ -228,7 +245,7 @@ if student_session_doc:
 else:
     if not st.session_state['doc_id']:
         if st.session_state['page'] == 'Home':
-            st.markdown(f"<h1>⚡ {t('SkyNote Cloud Architecture', 'نظام سكاي نوت السحابي')}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h1>⚡ {t('SkyNote', 'سكاي نوت')}</h1>", unsafe_allow_html=True)
             st.write("---")
             st.markdown(f"<h3>{t('Select Your Role', 'اختر صفتك للبدء')}</h3>", unsafe_allow_html=True)
             st.write("")
@@ -356,7 +373,7 @@ else:
                     doc_cam = st.camera_input(t("Take photo", "التقط الصورة"))
                     
                     if doc_cam is not None:
-                        with st.spinner(t("AI is processing the photo instantly...", "الذكاء الاصطناعي يحلل الصورة فوراً...")):
+                        with st.spinner(t("AI is processing the crowd...", "الذكاء الاصطناعي يحلل وجوه الحضور...")):
                             recognized = set()
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
@@ -368,7 +385,7 @@ else:
                             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                 tmp.write(doc_cam.getvalue()); tmp_p = tmp.name
                             try:
-                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", enforce_detection=False)
+                                res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", detector_backend="mtcnn", enforce_detection=False)
                                 for r in res:
                                     if not r.empty:
                                         sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
@@ -377,7 +394,6 @@ else:
                                 st.error(f"❌ رسالة العطل من السيرفر (كاميرا الدكتور): {str(e)}")
                             if os.path.exists(tmp_p): os.remove(tmp_p)
                             
-                            # فلتر منع التكرار لكاميرا الدكتور
                             today_str = datetime.now().strftime("%Y-%m-%d")
                             existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
                             already_present_sids = [v.get('id') for v in existing_data.values() if v.get('date') == today_str and "✅ Present" in v.get('status', '')]
@@ -421,7 +437,7 @@ else:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                         tmp.write(img.getvalue()); tmp_p = tmp.name
                                     try:
-                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", enforce_detection=False)
+                                        res = DeepFace.find(img_path=tmp_p, db_path=folder, model_name="SFace", detector_backend="mtcnn", enforce_detection=False)
                                         for r in res:
                                             if not r.empty:
                                                 sid = os.path.basename(r.iloc[0]['identity']).split('.')[0]
@@ -430,7 +446,6 @@ else:
                                         st.error(f"❌ رسالة العطل من السيرفر (رفع صور الدكتور): {str(e)}")
                                     if os.path.exists(tmp_p): os.remove(tmp_p)
                                 
-                                # فلتر منع التكرار لرفع الصور
                                 today_str = datetime.now().strftime("%Y-%m-%d")
                                 existing_data = get_db(f"/attendance/{doc_id}_{safe_cls}") or {}
                                 already_present_sids = [v.get('id') for v in existing_data.values() if v.get('date') == today_str and "✅ Present" in v.get('status', '')]
