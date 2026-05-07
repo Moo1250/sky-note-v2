@@ -169,24 +169,15 @@ if student_session_doc:
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # ==========================================
-                            # 🚨 بوابة التفتيش (التسجيل) 🚨
-                            # ==========================================
-                            face_objs = DeepFace.extract_faces(img_path=tmp_p, anti_spoofing=True)
-                            if not face_objs[0].get("is_real", True):
-                                os.remove(tmp_p)
-                                st.error(t("🚨 Fake photo detected! Please use a real face.", "🚨 تم اكتشاف صورة غير حقيقية! يرجى تصوير وجهك الحقيقي للتسجيل."))
-                                st.stop()
-                            # ==========================================
-                            
+                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=False)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             with open(f"{folder}/{sid}.jpg", "wb") as f: f.write(face.getbuffer())
                             st.success(t("✅ Registered Successfully!", "✅ تم التسجيل بنجاح!"))
                         except ValueError:
-                            if os.path.exists(tmp_p): os.remove(tmp_p)
-                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه أو الصورة غير واضحة!"))
+                            os.remove(tmp_p)
+                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه! يرجى تصوير وجهك بوضوح لتسجيلك."))
 
         elif current_mode == "Attendance (Live)":
             if is_expired:
@@ -225,16 +216,6 @@ if student_session_doc:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                                         tmp.write(student_img.getvalue()); tmp_p = tmp.name
                                     try:
-                                        # ==========================================
-                                        # 🚨 بوابة التفتيش (الحي) 🚨
-                                        # ==========================================
-                                        face_objs = DeepFace.extract_faces(img_path=tmp_p, anti_spoofing=True)
-                                        if not face_objs[0].get("is_real", True):
-                                            if os.path.exists(tmp_p): os.remove(tmp_p)
-                                            st.error(t("🚨 Fake photo detected! Please use a real live face.", "🚨 تم اكتشاف صورة غير حقيقية (محاولة غش)! الرجاء توجيه الكاميرا لوجهك مباشرة."))
-                                            st.stop()
-                                        # ==========================================
-                                        
                                         res = DeepFace.verify(img1_path=tmp_p, img2_path=reg_p, model_name="SFace", enforce_detection=False)
                                         if os.path.exists(tmp_p): os.remove(tmp_p)
                                         
