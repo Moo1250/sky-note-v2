@@ -140,9 +140,9 @@ if student_session_doc:
     
     st.markdown(f"<h1>⚡ {t('SkyNote', 'سكاي نوت - بوابة الطالب')}</h1>", unsafe_allow_html=True)
     
-    if not active or active['mode'] == "Standby (Closed)":
+if not active or active['mode'] == "Standby (Closed)":
         st.info(t("⏳ System is closed. Please wait for the Doctor.", "⏳ النظام مغلق. يرجى انتظار الدكتور."))
-    else:
+else:
         safe_cls = active['class_name']
         display_name = active['display_name']
         current_mode = active['mode']
@@ -155,9 +155,8 @@ if student_session_doc:
         st.write("---")
 
         is_expired = datetime.now() > datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
-
-   if current_mode == "Registration (New Students)":
-            st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
+if current_mode == "Registration (New Students)":
+    st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
             sid = st.text_input(t("Enter Student ID", "أدخل رقمك الجامعي"))
             face = st.camera_input(t("Frame your face", "التقط صورة واضحة لوجهك"))
             
@@ -169,7 +168,7 @@ if student_session_doc:
                 "أوافق صراحةً على التقاط ومعالجة بيانات وجهي البيومترية لأغراض تسجيل الحضور الأكاديمي وفقاً لقوانين حماية البيانات (KVKK)."
             ))
             
-            if st.button(t("Register Identity", "تسجيل البيانات")):
+if st.button(t("Register Identity", "تسجيل البيانات")):
                 # التحقق من الموافقة أولاً
                 if not consent:
                     st.error(t("⚠️ You must consent to the privacy terms to proceed.", "⚠️ إجراء أمني: يجب الموافقة على سياسة الخصوصية لإتمام التسجيل."))
