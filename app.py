@@ -156,28 +156,45 @@ if student_session_doc:
 
         is_expired = datetime.now() > datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
 
-        if current_mode == "Registration (New Students)":
+   if current_mode == "Registration (New Students)":
             st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
             sid = st.text_input(t("Enter Student ID", "أدخل رقمك الجامعي"))
             face = st.camera_input(t("Frame your face", "التقط صورة واضحة لوجهك"))
             
+            # ==========================================
+            # ⚖️ إضافة مربع الموافقة القانونية (Privacy Consent) ⚖️
+            # ==========================================
+            consent = st.checkbox(t(
+                "I consent to the processing of my facial biometric data for attendance purposes in accordance with privacy laws.", 
+                "أوافق صراحةً على التقاط ومعالجة بيانات وجهي البيومترية لأغراض تسجيل الحضور الأكاديمي وفقاً لقوانين حماية البيانات (KVKK)."
+            ))
+            
             if st.button(t("Register Identity", "تسجيل البيانات")):
-                if not sid or face is None:
+                # التحقق من الموافقة أولاً
+                if not consent:
+                    st.error(t("⚠️ You must consent to the privacy terms to proceed.", "⚠️ إجراء أمني: يجب الموافقة على سياسة الخصوصية لإتمام التسجيل."))
+                elif not sid or face is None:
                     st.warning(t("⚠️ Please enter ID and capture photo first.", "⚠️ يرجى إدخال الرقم والتقاط الصورة أولاً."))
                 else:
                     with st.spinner(t("Validating face...", "جاري التحقق من الوجه...")):
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=False)
+                            # بوابة التفتيش والتسجيل السابقة تبقى كما هي
+                            face_objs = DeepFace.extract_faces(img_path=tmp_p, anti_spoofing=True, enforce_detection=False)
+                            if not face_objs[0].get("is_real", True):
+                                os.remove(tmp_p)
+                                st.error(t("🚨 Fake photo detected! Please use a real face.", "🚨 تم اكتشاف صورة غير حقيقية! يرجى تصوير وجهك الحقيقي للتسجيل."))
+                                st.stop()
+                            
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             with open(f"{folder}/{sid}.jpg", "wb") as f: f.write(face.getbuffer())
                             st.success(t("✅ Registered Successfully!", "✅ تم التسجيل بنجاح!"))
                         except ValueError:
-                            os.remove(tmp_p)
-                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه! يرجى تصوير وجهك بوضوح لتسجيلك."))
+                            if os.path.exists(tmp_p): os.remove(tmp_p)
+                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه أو الصورة غير واضحة!"))
 
         elif current_mode == "Attendance (Live)":
             if is_expired:
