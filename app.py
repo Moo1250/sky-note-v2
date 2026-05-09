@@ -140,9 +140,9 @@ if student_session_doc:
     
     st.markdown(f"<h1>⚡ {t('SkyNote', 'سكاي نوت - بوابة الطالب')}</h1>", unsafe_allow_html=True)
     
-if not active or active['mode'] == "Standby (Closed)":
+    if not active or active['mode'] == "Standby (Closed)":
         st.info(t("⏳ System is closed. Please wait for the Doctor.", "⏳ النظام مغلق. يرجى انتظار الدكتور."))
-else:
+    else:
         safe_cls = active['class_name']
         display_name = active['display_name']
         current_mode = active['mode']
@@ -155,8 +155,9 @@ else:
         st.write("---")
 
         is_expired = datetime.now() > datetime.strptime(expires_at_str, "%Y-%m-%d %H:%M:%S")
-if current_mode == "Registration (New Students)":
-    st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
+
+        if current_mode == "Registration (New Students)":
+            st.markdown(f"#### 📝 {t('Cloud Registration', 'التسجيل السحابي')}")
             sid = st.text_input(t("Enter Student ID", "أدخل رقمك الجامعي"))
             face = st.camera_input(t("Frame your face", "التقط صورة واضحة لوجهك"))
             
@@ -168,8 +169,8 @@ if current_mode == "Registration (New Students)":
                 "أوافق صراحةً على التقاط ومعالجة بيانات وجهي البيومترية لأغراض تسجيل الحضور الأكاديمي وفقاً لقوانين حماية البيانات (KVKK)."
             ))
             
-if st.button(t("Register Identity", "تسجيل البيانات")):
-                # التحقق من الموافقة أولاً
+            if st.button(t("Register Identity", "تسجيل البيانات")):
+                # التحقق من الموافقة أولاً قبل أي شيء
                 if not consent:
                     st.error(t("⚠️ You must consent to the privacy terms to proceed.", "⚠️ إجراء أمني: يجب الموافقة على سياسة الخصوصية لإتمام التسجيل."))
                 elif not sid or face is None:
@@ -179,21 +180,15 @@ if st.button(t("Register Identity", "تسجيل البيانات")):
                         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
                             tmp.write(face.getvalue()); tmp_p = tmp.name
                         try:
-                            # بوابة التفتيش والتسجيل السابقة تبقى كما هي
-                            face_objs = DeepFace.extract_faces(img_path=tmp_p, anti_spoofing=True, enforce_detection=False)
-                            if not face_objs[0].get("is_real", True):
-                                os.remove(tmp_p)
-                                st.error(t("🚨 Fake photo detected! Please use a real face.", "🚨 تم اكتشاف صورة غير حقيقية! يرجى تصوير وجهك الحقيقي للتسجيل."))
-                                st.stop()
-                            
+                            DeepFace.extract_faces(img_path=tmp_p, enforce_detection=False)
                             os.remove(tmp_p)
                             folder = f"registered_faces/{doc_id}_{safe_cls}"
                             os.makedirs(folder, exist_ok=True)
                             with open(f"{folder}/{sid}.jpg", "wb") as f: f.write(face.getbuffer())
                             st.success(t("✅ Registered Successfully!", "✅ تم التسجيل بنجاح!"))
                         except ValueError:
-                            if os.path.exists(tmp_p): os.remove(tmp_p)
-                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه أو الصورة غير واضحة!"))
+                            os.remove(tmp_p)
+                            st.error(t("❌ No face detected! Please capture a clear photo of your face.", "❌ لم يتم العثور على وجه! يرجى تصوير وجهك بوضوح لتسجيلك."))
 
         elif current_mode == "Attendance (Live)":
             if is_expired:
